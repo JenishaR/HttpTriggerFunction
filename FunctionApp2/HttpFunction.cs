@@ -8,6 +8,11 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using System.Collections.Generic;
+using Microsoft.Azure.WebJobs.Extensions.EventGrid;
+using Microsoft.Azure.EventGrid.Models;
+using Microsoft.Azure.EventGrid;
+using Microsoft.WindowsAzure.Storage.Blob;
+using Microsoft.WindowsAzure.Storage;
 
 namespace HttpTriggerFunctionApp
 {
@@ -15,7 +20,7 @@ namespace HttpTriggerFunctionApp
     {
         [FunctionName("HttpFunction")]
         public static async Task<IActionResult> Run(
-            [HttpTrigger(AuthorizationLevel.Function, "post", Route = null)] HttpRequest req,
+            [HttpTrigger(AuthorizationLevel.Function, "post", Route = null)] HttpRequest req,           
             ILogger log)
         {
             log.LogInformation("C# HTTP trigger function processed a request.");
@@ -25,6 +30,8 @@ namespace HttpTriggerFunctionApp
 
             string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
             dynamic data = JsonConvert.DeserializeObject(requestBody);
+            var payload = JsonConvert.DeserializeObject<object>(requestBody);
+            var file = JsonConvert.SerializeObject(payload);
             //var validator = new PersonValidator();
             
             firstname = firstname ?? data?.firstname;
@@ -46,9 +53,31 @@ namespace HttpTriggerFunctionApp
                 return new BadRequestObjectResult(errors);
             }
 
+            var storageAccountConnectionString = "DefaultEndpointsProtocol=https;AccountName=jehttptriggerfunctionapp;AccountKey=QYkY8Gr2as0Sr1UPetvEPIvCG9OKi2XUYO/9ZeO8vbZfeezCBP/P7FKlNLAnxLjiKacmhzgygP4v+ASttGUnkw==;EndpointSuffix=core.windows.net";
+
+            var containerName = "demo";
+
+            var blobName = $"Folder/file-{Guid.NewGuid()}.json";
+
+
+
+            CloudStorageAccount storageAccount = CloudStorageAccount.Parse(storageAccountConnectionString);
+
+            CloudBlobClient blobClient = storageAccount.CreateCloudBlobClient();
+
+            CloudBlobContainer blobContainer = blobClient.GetContainerReference(containerName);
+
+            await blobContainer.CreateIfNotExistsAsync();
+
+            CloudBlockBlob blob = blobContainer.GetBlockBlobReference(blobName);
+
+            await blob.UploadTextAsync(file);
+
             string responseMessage =  $"Hello, {firstname}. This HTTP triggered function executed successfully.";
             log.LogInformation("Validation Passed");
+
             return new OkObjectResult(responseMessage);
         }
+       
     }
 }
