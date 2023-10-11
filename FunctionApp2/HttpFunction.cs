@@ -13,6 +13,9 @@ using Microsoft.Azure.EventGrid.Models;
 using Microsoft.Azure.EventGrid;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage;
+using Azure.Messaging.EventGrid;
+using Azure;
+using EventGridEvent = Azure.Messaging.EventGrid.EventGridEvent;
 
 namespace HttpTriggerFunctionApp
 {
@@ -53,6 +56,20 @@ namespace HttpTriggerFunctionApp
                 return new BadRequestObjectResult(errors);
             }
 
+            EventGridPublisherClient client = new EventGridPublisherClient(
+            new Uri("https://httptriggereventgridtopic.eastus-1.eventgrid.azure.net/api/events"),
+            new AzureKeyCredential("j0FPqiieR+XY3EBTNLeSBdNdB1tt55vL5ke24Kj2iIQ="));
+
+            EventGridEvent egEvent =
+    new EventGridEvent(
+        "ExampleEventSubject",
+        "Example.EventType",
+        "1.0",
+        "This is the event data");
+
+            // Send the event
+            await client.SendEventAsync(egEvent);
+
             var storageAccountConnectionString = "DefaultEndpointsProtocol=https;AccountName=jehttptriggerfunctionapp;AccountKey=QYkY8Gr2as0Sr1UPetvEPIvCG9OKi2XUYO/9ZeO8vbZfeezCBP/P7FKlNLAnxLjiKacmhzgygP4v+ASttGUnkw==;EndpointSuffix=core.windows.net";
 
             var containerName = "demo";
@@ -77,6 +94,10 @@ namespace HttpTriggerFunctionApp
             log.LogInformation("Validation Passed");
 
             return new OkObjectResult(responseMessage);
+
+
+
+            
         }
        
     }
